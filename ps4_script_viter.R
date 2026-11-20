@@ -234,6 +234,61 @@ forecast::dm.test(e_var4, e_bvar, h = 1, power = 2)
 
 # Based on these tests, we see that the BVAR(4) model performs better than the VAR(4) model for GDP and inflation by relatively significant amounts, despite the RMSE values of both of these models being relatively close for these variables. This suggests that RMSE is not the sole indicator of a model's forecasting ability, and that a wide range of components should be considered. It is more nuanced than 4.3b would suggest on its own.
 
+#5.1a
+md_raw <- read_csv("data/fredmd_2026-09.csv", show_col_types = FALSE)
+tcode <- unlist(md_raw[1, -1])
+md <- md_raw[-1, ] |> mutate(date = as.Date(sasdate, "%m/%d/%Y"))
+
+transform_series <- function(x, code) {
+  d <- function(v) c(NA, diff(v))
+  switch(as.character(code),
+         "1" = x,                      # level
+         "2" = d(x),                   # first difference
+         "3" = d(d(x)),                # second difference
+         "4" = log(x),                 # log
+         "5" = 100 * d(log(x)),        # growth rate
+         "6" = 100 * d(d(log(x))),     # change in the growth rate
+         "7" = d(x / dplyr::lag(x) - 1))
+}
+
+#5.1b
+fm <- map2_dfc(md[names(tcode)], tcode, transform_series) |>
+  mutate(date = md$date, .before = 1) |>
+  filter(date >= as.Date("1960-03-01"), date <= as.Date("2019-12-01"))
+
+fm <- fm[, colSums(is.na(fm)) == 0]
+
+dim(fm)
+
+#5.1c
+tcode[c("INDPRO", "PAYEMS", "CPIAUCSL", "FEDFUNDS")]
+
+# INDPRO and PAYEMS receive a growth rate transformations, CPIAUCSL receeives a change in growth rate transformation, and FEDFUNDS receives a first difference transformation. The transformations of INDPRO and FEDFUNDS are likely different because they measure different economic components and therefor undergo different structural changes over time, requiring distinct statistical tools to stabilize them.
+
+#5.2a
+Z <- fm |> select(-date) |> as.matrix()
+
+pc <- prcomp(scale(Z))
+
+summary(pc)$importance[, 1:5]
+
+# PC1 explains 0.1498 of the variance, PC2 explains 0.07407 of the variance, and PC3 explains 0.0706 of the variance.
+
+#5.2b
+F1 <- pc$x[, 1] * sign(cor(pc$x[, 1], fm$INDPRO))
+
+tibble(date = fm$date, F1 = F1) |>
+  ggplot(aes(date, F1)) +
+  geom_line() +
+  labs(title = "First Factor from FRED-MD", x = NULL, y = NULL) +
+  theme_minimal()
+
+#5.2c
+sort(abs(cor(pc$x[, 1], Z))[1, ], decreasing = TRUE)[1:8]
+sort(abs(cor(pc$x[, 2], Z))[1, ], decreasing = TRUE)[1:8]
+
+# Based on the correlations, I would assume that the first factor measuers overall economic activity, such as employment or industrial production. The strongest correlations related to the second factor, however, make me believe it is more related to prices and inflation, based on the FRED-MD index.
+
 
 
 
