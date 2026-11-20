@@ -338,3 +338,4 @@ direct_race("CPIAUCSL")
 
 # The factors do improve the forecast of 12-month CPI inflation, by 0.22 in terms of RMSE and 0.23 in terms of MAE, or about 10% of RMSE and 16% of MAE. We also know that the difference is statistically significant because the p-value of the Diebold-Mariano test is 0.000443, which is much smaller than 0.05, meaning we reject the null hypothesis of equal forecasting accuracy.
 
+
